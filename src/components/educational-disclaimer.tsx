@@ -1,0 +1,3 @@
+import { Info } from "lucide-react";
+
+export function EducationalDisclaimer(){return <div className="flex gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-xs leading-5 text-slate-400"><Info className="mt-0.5 size-4 shrink-0 text-teal-400"/><p><strong className="text-slate-300">Educational disclaimer:</strong> NEXTGEN TESTING SERVICE provides educational and practice resources for admission test preparation. Practice questions and mock examinations are not official university examination questions unless explicitly authorized. Students should verify current admission requirements, examination criteria and application information directly with the relevant institution.</p></div>}
