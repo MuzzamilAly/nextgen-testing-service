@@ -7,13 +7,20 @@ import { useAuth } from "@/auth/auth-context";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 type Mode="login"|"register";
+function authErrorMessage(error:{message:string;code?:string}){
+  const message=error.message.toLowerCase();
+  if(error.code==="over_email_send_rate_limit"||message.includes("email rate limit"))return "Too many confirmation emails were requested. Please wait before trying again, or sign in if your account was already created.";
+  if(message.includes("user already registered"))return "An account already exists with this email. Please sign in or reset your password.";
+  if(message.includes("invalid login credentials"))return "Email or password is incorrect.";
+  return error.message;
+}
 export function AuthPage({mode}:{mode:Mode}){
   const login=mode==="login";const {user,loading}=useAuth();const navigate=useNavigate();const location=useLocation();
   const [busy,setBusy]=useState(false);const [message,setMessage]=useState("");const [error,setError]=useState("");
   if(!loading&&user)return <Navigate to="/student/dashboard" replace/>;
   async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();setError("");setMessage("");if(!supabase){setError("Supabase is not configured. Add the project URL and anon key to .env.local.");return;}const form=new FormData(e.currentTarget);const email=String(form.get("email")??"").trim();const password=String(form.get("password")??"");setBusy(true);
-    if(login){const {error:authError}=await supabase.auth.signInWithPassword({email,password});if(authError)setError(authError.message);else navigate((location.state as {from?:string}|null)?.from??"/student/dashboard",{replace:true});}
-    else{const fullName=String(form.get("full_name")??"").trim();const confirm=String(form.get("confirm_password")??"");if(password!==confirm){setError("Passwords do not match.");setBusy(false);return;}const {data,error:authError}=await supabase.auth.signUp({email,password,options:{data:{full_name:fullName},emailRedirectTo:`${window.location.origin}/student/dashboard`}});if(authError)setError(authError.message);else if(!data.session)setMessage("Account created. Check your email to confirm your account.");else navigate("/student/dashboard",{replace:true});}
+    if(login){const {error:authError}=await supabase.auth.signInWithPassword({email,password});if(authError)setError(authErrorMessage(authError));else navigate((location.state as {from?:string}|null)?.from??"/student/dashboard",{replace:true});}
+    else{const fullName=String(form.get("full_name")??"").trim();const confirm=String(form.get("confirm_password")??"");if(password!==confirm){setError("Passwords do not match.");setBusy(false);return;}const {data,error:authError}=await supabase.auth.signUp({email,password,options:{data:{full_name:fullName},emailRedirectTo:`${window.location.origin}/student/dashboard`}});if(authError)setError(authErrorMessage(authError));else if(!data.session)setMessage("Account created. Check your email to confirm your account.");else navigate("/student/dashboard",{replace:true});}
     setBusy(false);
   }
   return <AuthShell eyebrow={login?"Welcome back":"Join NEXTGEN"} title={login?"Sign in to continue":"Create your student account"} description={login?"Continue your preparation and track your progress.":"Start building a smarter path toward your admission goals."}><form className="mt-8 grid gap-5" onSubmit={submit}>{!login&&<AuthField label="Full name" name="full_name" type="text" autoComplete="name"/>}<AuthField label="Email address" name="email" type="email" autoComplete="email"/><AuthField label="Password" name="password" type="password" autoComplete={login?"current-password":"new-password"}/>{!login&&<AuthField label="Confirm password" name="confirm_password" type="password" autoComplete="new-password"/>}{login&&<Link className="-mt-2 justify-self-end text-sm font-semibold text-primary" to="/forgot-password">Forgot password?</Link>}<Status error={error} message={message}/><Button disabled={busy||!isSupabaseConfigured} size="lg" type="submit">{busy?<LoaderCircle className="animate-spin"/>:login?"Sign in":"Create account"}</Button>{!isSupabaseConfigured&&<p className="text-center text-xs text-amber-700">Connect Supabase in <code>.env.local</code> to activate authentication.</p>}</form><p className="mt-6 text-center text-sm text-slate-600">{login?"New to NEXTGEN? ":"Already have an account? "}<Link className="font-bold text-primary" to={login?"/register":"/login"}>{login?"Create an account":"Sign in"}</Link></p></AuthShell>;
